@@ -56,6 +56,7 @@ protected:
 struct edge_t {
   GraphId i;
   const DirectedEdge* e;
+  uint64_t way_id;
   operator const GraphId&() const {
     return i;
   }
@@ -71,9 +72,11 @@ struct edge_t {
 // for the directed edge. This should not occur but this can happen in
 // GraphValidator if it fails to find an opposing edge.
 edge_t opposing(GraphReader& reader, graph_tile_ptr tile, const GraphId& edge_id) {
-  const DirectedEdge* opp_edge = nullptr;
+  const DirectedEdge* opp_edge = nullptr; // reader.GetOpposingEdge(edge_id,tile);
   auto opp_id = reader.GetOpposingEdgeId(edge_id, opp_edge, tile);
-  return {opp_id, opp_edge};
+  auto edge_info_opp = tile->edgeinfo(opp_edge->edgeinfo_offset());
+  edge_t candidate{opp_id, opp_edge, edge_info_opp.wayid()};
+  return candidate;
 }
 
 edge_t next(const std::unordered_map<GraphId, uint64_t>& tile_set,
@@ -109,6 +112,7 @@ edge_t next(const std::unordered_map<GraphId, uint64_t>& tile_set,
     if (candidate.e->use() == Use::kTransitConnection || candidate.e->IsTransitLine()) {
       continue;
     }
+    candidate.way_id = tile->edgeinfo(candidate.e->edgeinfo_offset()).wayid();
     // names have to match
     auto candidate_names = tile->edgeinfo(candidate.e->edgeinfo_offset()).GetNames();
     if (names.size() == candidate_names.size() &&
@@ -131,14 +135,26 @@ void extend(GraphReader& reader,
   // get the shape
   auto info = tile->edgeinfo(edge.e->edgeinfo_offset());
   auto more = valhalla::midgard::decode7<std::list<PointLL>>(info.encoded_shape());
+  //LOG_INFO("Exporting " + std::to_string(edge.i.value) + " edges");
+  //LOG_INFO("Exporting " + info.encoded_shape() + " edges");
+
   // this shape runs the other way
   if (!edge.e->forward()) {
     more.reverse();
   }
+
+  std::cout << edge.i.value << column_separator << edge.way_id << column_separator;
+  std::cout << encode(more) << column_separator;
+
   // connecting another shape we dont want dups where they meet
   if (shape.size()) {
     more.pop_front();
   }
+
+
+
+
+
   shape.splice(shape.end(), more);
 }
 
@@ -249,7 +265,11 @@ int main(int argc, char* argv[]) {
       // marked
 
       // make sure we dont ever look at this again
-      edge_t edge{tile_count_pair.first, tile->directededge(i)};
+
+      // initial the first wayid
+      const DirectedEdge* first_edge = tile->directededge(i);
+      auto edge_info_first = tile->edgeinfo(first_edge->edgeinfo_offset());
+      edge_t edge{tile_count_pair.first, first_edge, edge_info_first.wayid()};
       edge.i.set_id(i);
       edge_set.set(tile_count_pair.second + i);
       ++set;
@@ -262,6 +282,13 @@ int main(int argc, char* argv[]) {
 
       // get the opposing edge as well (ensure a valid edge is returned)
       edge_t opposing_edge = opposing(reader, tile, edge);
+
+      // keep some state about this section of road
+      std::list<edge_t> edges{edge};
+
+      set += 1;
+
+      edges.push_back(opposing_edge);
       if (opposing_edge.e == nullptr) {
         continue;
       }
@@ -275,6 +302,7 @@ int main(int argc, char* argv[]) {
 
       // no name no thanks
       auto edge_info = tile->edgeinfo(edge.e->edgeinfo_offset());
+      edge.way_id = edge_info.wayid();
       auto names = edge_info.GetNames();
       if (names.size() == 0 && !unnamed) {
         continue;
@@ -290,8 +318,6 @@ int main(int argc, char* argv[]) {
       // they are DAGs. this can produce suboptimal results however and depends on the initial edge.
       // so for now we'll just greedily export edges
 
-      // keep some state about this section of road
-      std::list<edge_t> edges{edge};
 
       // go forward
       auto t = tile;
@@ -306,6 +332,7 @@ int main(int argc, char* argv[]) {
         set += 2;
         // keep this
         edges.push_back(edge);
+        edges.push_back(other);
       }
 
       // go backward
@@ -315,12 +342,15 @@ int main(int argc, char* argv[]) {
         edge_set.set(tile_set.find(edge.i.Tile_Base())->second + edge.i.id());
         edge_t other = opposing(reader, t, edge);
         if (other.e == nullptr) {
+LOG_INFO("Exporting " + std::to_string(other.i.value) + " edges");
+  	LOG_INFO("E--------------------------------------------");
           continue;
         }
         edge_set.set(tile_set.find(other.i.Tile_Base())->second + other.i.id());
         set += 2;
         // keep this
         edges.push_front(other);
+        edges.push_front(edge);
       }
 
       // get the shape
@@ -330,11 +360,14 @@ int main(int argc, char* argv[]) {
       }
 
       // output it as: shape,name,name,...
-      auto encoded = encode(shape);
-      std::cout << encoded << column_separator;
-      for (const auto& name : names) {
-        std::cout << name << (&name == &names.back() ? "" : column_separator);
-      }
+      //auto encoded = encode(shape);
+      //std::cout << encoded << column_separator;
+      //for (const auto& e : edges) {
+      //  std::cout << e.i.value << column_separator << *(e.e->json()) << column_separator;
+      //}
+      //for (const auto& name : names) {
+      //  std::cout << name << (&name == &names.back() ? "" : column_separator);
+      //}
       std::cout << row_separator;
       std::cout.flush();
     }
