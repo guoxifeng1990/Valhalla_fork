@@ -268,17 +268,17 @@ void thor_worker_t::build_trace(
   std::unordered_map<size_t, std::pair<EdgeTrimmingInfo, EdgeTrimmingInfo>> edge_trimming;
   baldr::GraphId last_id;
   size_t edge_index = 0;
+  size_t match_index = 0;
+  // remember the global edge index of every input point
+  for (const auto& match : match_results) {
+
+	match_results[match_index].edge_index = match.edgeid.value;
+	match_index++;
+
+    }
   for (const auto& path : paths) {
-    // remember the global edge index of every input point
+
     for (const auto* segment : path.second) {
-      // they can be -1,-1 or l,-1 or -1,h or l,h
-      for (int low = (segment->first_match_idx >= 0 ? segment->first_match_idx
-                                                    : segment->last_match_idx),
-               high = (segment->last_match_idx >= 0 ? segment->last_match_idx
-                                                    : segment->first_match_idx);
-           low >= 0 && low <= high; ++low) {
-        match_results[low].edge_index = edge_index;
-      }
       if (last_id != segment->edgeid) {
         ++edge_index;
       }
