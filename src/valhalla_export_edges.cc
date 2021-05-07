@@ -143,8 +143,17 @@ void extend(GraphReader& reader,
     more.reverse();
   }
 
+  //const auto* node_output = tile->node(edge.e->endnode())
+
   std::cout << edge.i.value << column_separator << edge.way_id << column_separator;
   std::cout << encode(more) << column_separator;
+  std::cout << reader.GetBeginNodeId(edge.e, tile).value << column_separator;
+
+  std::cout << edge.e->endnode().value << column_separator;
+  const NodeInfo* nodeinfo_end = tile->node(edge.e->endnode());
+  std::cout << nodeinfo_end->latlng(tile->header()->base_ll()).first << column_separator;
+  std::cout << nodeinfo_end->latlng(tile->header()->base_ll()).second << column_separator;
+
 
   // connecting another shape we dont want dups where they meet
   if (shape.size()) {
