@@ -272,7 +272,7 @@ void thor_worker_t::build_trace(
   // remember the global edge index of every input point
   for (const auto& match : match_results) {
 
-	match_results[match_index].edge_index = match.edge_index.value;
+	match_results[match_index].edge_index = match.edgeid.value;
 	match_index++;
 
     }
