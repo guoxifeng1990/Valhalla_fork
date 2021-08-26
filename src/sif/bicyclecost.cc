@@ -523,8 +523,9 @@ bool BicycleCost::Allowed(const baldr::DirectedEdge* edge,
   // Check bicycle access and turn restrictions. Bicycles should obey
   // vehicular turn restrictions. Allow Uturns at dead ends only.
   // Skip impassable edges and shortcut edges.
-  if (!(edge->forwardaccess() & kBicycleAccess) || edge->is_shortcut() ||
-      (!pred.deadend() && pred.opp_local_idx() == edge->localedgeidx()) ||
+  if ( edge->is_shortcut() ||
+      (!pred.deadend() && pred.opp_local_idx() == edge->localedgeidx() &&
+       pred.mode() == TravelMode::kBicycle) ||
       (pred.restrictions() & (1 << edge->localedgeidx())) || IsUserAvoidEdge(edgeid)) {
     return false;
   }
@@ -556,10 +557,11 @@ bool BicycleCost::AllowedReverse(const baldr::DirectedEdge* edge,
                                  bool& has_time_restrictions) const {
   // Check access, U-turn (allow at dead-ends), and simple turn restriction.
   // Do not allow transit connection edges.
-  if (!(opp_edge->forwardaccess() & kBicycleAccess) || opp_edge->is_shortcut() ||
+  if (opp_edge->is_shortcut() ||
       opp_edge->use() == Use::kTransitConnection || opp_edge->use() == Use::kEgressConnection ||
       opp_edge->use() == Use::kPlatformConnection ||
-      (!pred.deadend() && pred.opp_local_idx() == edge->localedgeidx()) ||
+      (!pred.deadend() && pred.opp_local_idx() == edge->localedgeidx() &&
+       pred.mode() == TravelMode::kBicycle) ||
       (opp_edge->restrictions() & (1 << pred.opp_local_idx())) || IsUserAvoidEdge(opp_edgeid)) {
     return false;
   }
