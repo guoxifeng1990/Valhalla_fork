@@ -228,7 +228,7 @@ public:
    * @return  Returns access mode.
    */
   uint32_t access_mode() const {
-    return kBicycleAccess;
+    return kAllAccess;
   }
 
   /**
@@ -288,7 +288,7 @@ public:
    * @return  Returns true if access is allowed, false if not.
    */
   virtual bool Allowed(const baldr::NodeInfo* node) const {
-    return (node->access() & kBicycleAccess);
+    return (node->access() & kAllAccess);
   }
 
   /**
@@ -407,7 +407,7 @@ protected:
     Surface s = worst_allowed_surface_;
     float a = avoid_bad_surfaces_;
     return [s, a](const baldr::DirectedEdge* edge) {
-      if (edge->is_shortcut() || !(edge->forwardaccess() & kBicycleAccess) ||
+      if (edge->is_shortcut() || !(edge->forwardaccess() & kAllAccess) ||
           edge->use() == Use::kSteps || (a == 1.0f && edge->surface() > s)) {
         return 0.0f;
       } else {
@@ -424,7 +424,7 @@ protected:
    */
   virtual const NodeFilter GetNodeFilter() const {
     // throw back a lambda that checks the access for this type of costing
-    return [](const baldr::NodeInfo* node) { return !(node->access() & kBicycleAccess); };
+    return [](const baldr::NodeInfo* node) { return !(node->access() & kAllAccess); };
   }
 };
 
@@ -541,7 +541,7 @@ bool BicycleCost::Allowed(const baldr::DirectedEdge* edge,
   if (edge->surface() > worst_allowed_surface_) {
     return false;
   }
-  return DynamicCost::EvaluateRestrictions(kBicycleAccess, edge, tile, edgeid, current_time, tz_index,
+  return DynamicCost::EvaluateRestrictions(kAllAccess, edge, tile, edgeid, current_time, tz_index,
                                            has_time_restrictions);
 }
 
@@ -570,7 +570,7 @@ bool BicycleCost::AllowedReverse(const baldr::DirectedEdge* edge,
   if (edge->surface() > worst_allowed_surface_) {
     return false;
   }
-  return DynamicCost::EvaluateRestrictions(kBicycleAccess, edge, tile, opp_edgeid, current_time,
+  return DynamicCost::EvaluateRestrictions(kAllAccess, edge, tile, opp_edgeid, current_time,
                                            tz_index, has_time_restrictions);
 }
 
